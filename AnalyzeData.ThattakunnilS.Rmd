@@ -1,0 +1,200 @@
+---
+title: "Analysis of Products Sales"
+subtitle: "Practicum II"
+author: "Steffi Thattakunnil"
+date: "Spring 2024"
+output: pdf_document
+---
+
+```{r setupConnection, echo=FALSE, message=FALSE, warning=FALSE}
+# Load the required libraries
+library(DBI)
+library(RMySQL)
+library(dplyr)
+library(knitr)
+library(kableExtra)
+library(ggplot2)
+library(scales)
+
+# Database connection details
+db_server <- "sql5.freemysqlhosting.net"
+db_name <- "sql5699914"
+db_username <- "sql5699914"
+db_password <- "NRLtz2sMsj"
+db_port <- 3306
+
+# Connect to the MySQL database
+dbcon <- dbConnect(RMySQL::MySQL(), 
+                   user=db_username, 
+                   password=db_password, 
+                   dbname=db_name, 
+                   host=db_server, 
+                   port=db_port)
+```
+
+## Top Five Sales Reps by Year
+
+The table 'Top Five Sales Reps by Year' showcases the highest-achieving sales representatives for each year based on total sales. 
+```{r topReps, echo=FALSE, message=FALSE, warning=FALSE}
+
+# Analytical Query I:
+top_reps_data <- dbGetQuery(dbcon, "
+  SELECT
+    year,
+    repName,
+    SUM(totalSoldAmount) AS totalSales
+  FROM rep_facts
+  GROUP BY year, repID
+  ORDER BY year, totalSales DESC
+")
+
+# Use dplyr to limit to top five per year
+top_reps <- top_reps_data %>%
+  group_by(year) %>%
+  slice_max(order_by = totalSales, n = 5) %>%
+  ungroup()  %>%
+  rename(Year = year, `Sales Representative` = repName, `Total Sales` = totalSales)
+
+# Using kable to create a table
+kable(top_reps, "latex", booktabs = TRUE, caption = "Top Five Sales Reps by Year") %>%
+  kable_styling(latex_options = c("striped", "scale_down", "hold_position"))
+
+```
+
+```{r topRepsTable, echo=FALSE, eval=FALSE, message=FALSE, warning=FALSE}
+
+# Analytical Query I - Print Table
+print(top_reps)
+
+```
+
+\newpage
+## Quarterly Sales per Product
+
+The 'Quarterly Sales per Product' graph presents the comparison of product performance across all quarters for the given years.
+
+```{r quarterlySales, echo=FALSE, message=FALSE, warning=FALSE}
+
+# Analytical Query II:
+quarterly_sales_data <- dbGetQuery(dbcon, "
+  SELECT
+    productName,
+    year,
+    quarter,
+    SUM(totalSales) AS totalQuarterlySales
+  FROM product_facts
+  GROUP BY productName, year, quarter
+  ORDER BY productName, year, quarter
+")
+
+```
+
+```{r quarterlySalesTable, echo=FALSE, eval=FALSE, message=FALSE, warning=FALSE}
+
+# Analytical Query II - Print Table
+print(quarterly_sales_data)
+
+```
+
+```{r quarterylySalesGraph, fig.width=10, fig.height=8, echo=FALSE, message=FALSE, warning=FALSE}
+
+# Analytical Query II - Plot Graph
+
+ggplot(quarterly_sales_data, aes(x = quarter, y = totalQuarterlySales, group = year, color = year)) +
+  geom_line() +
+  facet_wrap(~productName, scales = "free_y", ncol = 3) + 
+  scale_y_continuous(labels = label_comma()) + # Use label_comma to avoid scientific notation
+  labs(title = "Quarterly Sales per Product : ", x = "Quarter", y = "Total Sales Amount") +
+  theme_minimal() +
+  theme(legend.position = "top") 
+
+```
+
+
+\newpage
+## Units Sold per Product per Region
+
+The 'Units Sold per Product per Region' graph compares the unit sales across different regions, broken down by product. 
+
+```{r unitsSold, echo=FALSE, message=FALSE, warning=FALSE}
+
+# Analytical Query III:
+units_sold_data <- dbGetQuery(dbcon, "
+  SELECT
+    productName,
+    region,
+    SUM(totalUnits) AS unitsSold
+  FROM product_facts
+  GROUP BY productName, region
+")
+
+```
+
+```{r unitsSoldTable, echo=FALSE, eval=FALSE, message=FALSE, warning=FALSE}
+
+# Analytical Query III - Print Table
+print(units_sold_data)
+
+```
+
+```{r unitsSoldGraph, echo=FALSE, message=FALSE, warning=FALSE}
+
+# Analytical Query III - Plot Graph
+
+ggplot(units_sold_data, aes(x = region, y = unitsSold, group = productName, color = productName)) +
+  geom_line() +
+  scale_y_continuous(labels = label_comma()) + # Use label_comma to avoid scientific notation
+  labs(title = "Units Sold per Product per Region", x = "Region", y = "Units Sold")
+```
+
+
+\newpage
+## Average Yearly Sales per Sales Rep
+
+The 'Average Yearly Sales per Sales Rep' graph depicts the average sales achieved per transaction by each sales rep over the years.
+
+```{r avgSales, echo=FALSE, message=FALSE, warning=FALSE}
+
+# Analytical Query IV:
+avg_sales_data <- dbGetQuery(dbcon, "
+  SELECT
+    repName,
+    year,
+    ROUND(SUM(totalSoldAmount) / SUM(totalTransactions)) as avgYearlySales
+  FROM rep_facts 
+  GROUP BY repName, year
+")
+
+```
+
+```{r avgSalesTable, echo=FALSE, eval=FALSE, message=FALSE, warning=FALSE}
+
+# Analytical Query IV - Print Table
+print(avg_sales_data)
+
+```
+
+```{r avgSalesGraph, echo=FALSE, message=FALSE, warning=FALSE}
+
+# Analytical Query IV - Plot Graph
+
+ggplot(avg_sales_data, aes(x = year, y = avgYearlySales, group = repName, color = repName)) +
+  geom_line() +
+  geom_point() +  # Add points to the line graph for clearer data points
+  labs(title = "Average Yearly Sales per Sales Rep",
+       x = "Year",
+       y = "Average Sales",
+       color = "Sales Rep") +
+  theme_minimal() +
+  theme(legend.position = "bottom")  
+
+```
+
+
+
+```{r disconnectDB, echo=FALSE, eval=FALSE, message=FALSE, warning=FALSE}
+
+# Close the database connection
+dbDisconnect(dbcon)
+
+```
