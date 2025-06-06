@@ -38,4 +38,28 @@ Render the analytical report via:
 
 ```bash
 R -e "rmarkdown::render('AnalyzeDataThattakunnil.Rmd')"
+```
 
+---
+## 4. Results
+
+Running the full pipeline creates two deliverables:
+
+1. **pharmaDB.sqlite** – a star-schema database with both raw transactions and OLAP summary views, ready for SQL queries, BI dashboards, or ML workflows.  
+2. **AnalyzeData.ThattakunnilS.pdf** – a shareable report with ranking tables and ggplot charts that spotlight top reps, seasonal product demand, regional sales patterns, and average deal sizes.
+
+These artefacts demonstrate the journey from raw XML to decision-ready insight and can be regenerated anytime with one ETL run plus an RMarkdown render.
+
+---
+
+## 5. Analysis
+
+The PDF report is generated with **AnalyzeDataThattakunnil.Rmd**, an RMarkdown notebook that blends SQL, R, and visualization libraries:
+
+* **SQL layer** – parameterised queries via `DBI::dbGetQuery()` pull data from the OLAP views (e.g., yearly revenue by rep, quarterly volume by product, units by country).  
+* **Transformation layer** – `dplyr` pipelines reshape and summarise the result sets, adding calculated KPIs such as average deal size and YoY growth.  
+* **Visualization layer** – `ggplot2` produces ranking bar charts, line plots for seasonality, and faceted heat-maps for regional trends; tables are rendered with `kableExtra` for a clean, PDF-ready layout.  
+* Each code chunk is cached, so re-running the notebook after fresh ETL finishes in seconds.  
+* Analysts can swap in new queries or tweak visual themes without touching the ETL scripts—simply edit the `.Rmd`, hit **Knit**, and a new PDF drops out.
+
+This modular approach keeps data extraction, transformation, and presentation loosely coupled while showcasing the full analytics stack in a single, reproducible document.
